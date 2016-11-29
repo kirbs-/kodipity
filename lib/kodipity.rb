@@ -1,5 +1,6 @@
 # require "kodipity/version"
 require 'httparty'
+require 'kodipity/models'
 
 module Kodipity
 
@@ -34,7 +35,11 @@ module Kodipity
 	end
 
 	def self.recordings
-		HTTParty.post(@url, headers: @headers, body: @recordings)
+		recordings = []
+		HTTParty.post(@url, headers: @headers, body: @recordings)['result']['recordings'].each do |recording|
+			recordings << Kodipity::PVRRecording.new(recording['label'], recording['recordingid'])
+		end
+		recordings
 	end
 
 	def self.rec
