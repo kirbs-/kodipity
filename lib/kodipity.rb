@@ -9,8 +9,8 @@ module Kodipity
 
 	@movies = '{"jsonrpc": "2.0", "method": "VideoLibrary.GetMovies", "params": { "properties" : ["art", "rating", "thumbnail", "playcount", "file"], "sort": { "order": "ascending", "method": "label", "ignorearticle": true } }, "id": "libMovies"}'
 	@player_active = '{"jsonrpc": "2.0", "id": 1, "method": "Player.GetProperties", "params": {"properties": ["speed"], "playerid": 1}}'
-	@channels = '{"jsonrpc": "2.0", "id": 1, "method": "PVR.GetChannelGroups", "params": {"channeltype" : "tv"}, "playerid": 1}}'
-	@recordings = '{"jsonrpc": "2.0", "id": 1, "method": "PVR.GetRecordings", "playerid": 1}}'
+	@channels = '{"jsonrpc": "2.0", "id": 1, "method": "PVR.GetChannelGroups", "params": {"channeltype" : "tv"}}}'
+	@recordings = '{"jsonrpc": "2.0", "id": 1, "method": "PVR.GetRecordings"}}'
 
 	def self.movies
 		movies = {}
@@ -37,17 +37,32 @@ module Kodipity
 	def self.recordings
 		recordings = []
 		HTTParty.post(@url, headers: @headers, body: @recordings)['result']['recordings'].each do |recording|
-			recordings << Kodipity::PVRRecording.new(recording['label'], recording['recordingid'])
+			recordings << Kodipity::PVRRecording.new(recording['recordingid'])
 		end
 		recordings
 	end
 
 	def self.rec
-		HTTParty.post(@url, headers: @headers, body: '{"jsonrpc": "2.0", "id": 1, "method": "PVR.GetRecordingDetails", "params": {"recordingid" : 362, "properties": ["title"]}, "playerid": 1}')
+		HTTParty.post(@url, headers: @headers, body: '{"jsonrpc": "2.0", "id": 1, "method": "PVR.GetRecordingDetails", "params": {"recordingid" : 122, "properties": ["title", "plot", "plotoutline", "file"]}, "playerid": 1}')
 	end
 
-	def self.doc(param)
+	def self.docs(param)
 		HTTParty.post(@url, headers: @headers, body: '{ "jsonrpc": "2.0", "method": "JSONRPC.Introspect", "params": { "filter": { "id": "PVR.GetRecordingDetails", "type": "method" } }, "id": 1 }')
+	end
+
+	def self.playing?
+		Kodipity.active_players.size > 0
+	end
+
+	def self.active_players
+		out = {}
+		HTTParty.post(@url, headers: @headers, body: '{"jsonrpc": "2.0", "method": "Player.GetActivePlayers", "id": 1}')['result'].each do |player|
+			out = player.merge(out)
+		end
+	end
+
+	def self.play(id)
+		HTTParty.post(@url, headers: @headers, body: '{"jsonrpc": "2.0", "method": "Player.Open", "params": { "item": {"file": "pvr://recordings/active/The Goldbergs The Greatest Musical Ever Written, TV (7.1 WJLADT), 20161201_010000.pvr"} }, id": 1}')
 	end
 
 end
