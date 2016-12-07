@@ -1,10 +1,14 @@
 # require "kodipity/version"
 require 'httparty'
 require 'kodipity/models'
+require 'uri'
+require 'sinatra'
+require 'alexa_rubykit'
 
 module Kodipity
 
 	@url = 'http://rpi-osmc.lan/jsonrpc'
+	# @url = 'http://127.0.0.1:8080/jsonrpc'
 	@headers = {"Content-Type" => 'application/json'}
 
 	@movies = '{"jsonrpc": "2.0", "method": "VideoLibrary.GetMovies", "params": { "properties" : ["art", "rating", "thumbnail", "playcount", "file"], "sort": { "order": "ascending", "method": "label", "ignorearticle": true } }, "id": "libMovies"}'
@@ -34,10 +38,10 @@ module Kodipity
 		channels
 	end
 
-	def self.recordings
+	def self.recordings(metadata = true)
 		recordings = []
 		HTTParty.post(@url, headers: @headers, body: @recordings)['result']['recordings'].each do |recording|
-			recordings << Kodipity::PVRRecording.new(recording['recordingid'])
+			recordings << Kodipity::PVRRecording.new(recording['recordingid'], metadata)
 		end
 		recordings
 	end
@@ -47,7 +51,7 @@ module Kodipity
 	end
 
 	def self.docs(param)
-		HTTParty.post(@url, headers: @headers, body: '{ "jsonrpc": "2.0", "method": "JSONRPC.Introspect", "params": { "filter": { "id": "PVR.GetRecordingDetails", "type": "method" } }, "id": 1 }')
+		HTTParty.post(@url, headers: @headers, body: '{ "jsonrpc": "2.0", "method": "JSONRPC.Introspect", "params": { "filter": { "id": "Player.Open", "type": "method" } }, "id": 1 }')
 	end
 
 	def self.playing?
@@ -61,8 +65,43 @@ module Kodipity
 		end
 	end
 
-	def self.play(id)
-		HTTParty.post(@url, headers: @headers, body: '{"jsonrpc": "2.0", "method": "Player.Open", "params": { "item": {"file": "pvr://recordings/active/The Goldbergs The Greatest Musical Ever Written, TV (7.1 WJLADT), 20161201_010000.pvr"} }, id": 1}')
+	def self.play(file)
+		file_url = URI.encode(file)
+		HTTParty.post(@url, headers: @headers, body: '{"jsonrpc": "2.0", "method": "Player.Open", "params": { "item": {"recordingid": "pvr://recordings/active///The%20Goldbergs%20The%20Greatest%20Musical%20Ever%20Written,%20TV%20(7.1%20WJLADT),%2020161201_010000.pvr"} }, id": 1}')
 	end
 
+	def self.play_next(tv_show)
+		recs = Kodipity.recordings.select{ |rec| rec.title.include? tv_show }
+	end
+
+
+end
+
+before do 
+	content_type('application/json')
+end
+
+
+post '/' do
+	request_json = JSON.parse(request.body.read.to_s)
+	puts request_json['request'] #['intent']['name']
+	puts request_json.to_s
+	response = AlexaRubykit::Response.new
+
+	case request_json['request']['type']
+	when 'LaunchRequest'
+		response.add_speech "House ready"
+	when 'IntentRequest'
+		case request_json['request']['intent']['name']
+		when 'GetFireplaceTemp'
+			reading = HTTParty.get('http://house.local/sensors/6/current_readings.json')[11]['value'].round(-1)
+			response.add_speech "#{reading} degrees"
+		when 'Play'
+			Kodipity.recordings[0].play
+			response.add_speech "Starting show"
+		end
+	else
+		response.add_speech "Good bye"
+	end
+	response.build_response(false)
 end
