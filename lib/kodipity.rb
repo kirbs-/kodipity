@@ -70,8 +70,22 @@ module Kodipity
 		HTTParty.post(@url, headers: @headers, body: '{"jsonrpc": "2.0", "method": "Player.Open", "params": { "item": {"recordingid": "pvr://recordings/active///The%20Goldbergs%20The%20Greatest%20Musical%20Ever%20Written,%20TV%20(7.1%20WJLADT),%2020161201_010000.pvr"} }, id": 1}')
 	end
 
-	def self.play_next(tv_show)
+	def self.play_next_recording(tv_show)
 		recs = Kodipity.recordings.select{ |rec| rec.title.include? tv_show }
+		recs.sort_by!{ |rec| rec.start_time}
+
+		watched_episode = false
+
+		recs.each do |rec|
+			if watched_episode
+				# rec.play 
+				return rec
+			end
+			watched_episode = true if rec.play_count > 0
+		end
+
+		# recs[0].play
+		recs[0]
 	end
 
 
@@ -84,8 +98,6 @@ end
 
 post '/' do
 	request_json = JSON.parse(request.body.read.to_s)
-	puts request_json['request'] #['intent']['name']
-	puts request_json.to_s
 	response = AlexaRubykit::Response.new
 
 	case request_json['request']['type']
@@ -96,9 +108,12 @@ post '/' do
 		when 'GetFireplaceTemp'
 			reading = HTTParty.get('http://house.local/sensors/6/current_readings.json')[11]['value'].round(-1)
 			response.add_speech "#{reading} degrees"
-		when 'Play'
-			Kodipity.recordings[0].play
-			response.add_speech "Starting show"
+		when 'PlayShow'
+			tv_show = request_json['request']['intent']['slots']['showname']['value']
+			episode = Kodipity.play_next_recording tv_show
+			# episode.play
+			episode_name = episode.file.scan(/\/\/\/(...*), TV/)[0][0]
+			response.add_speech "Starting #{episode_name}"
 		end
 	else
 		response.add_speech "Good bye"
