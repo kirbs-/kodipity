@@ -7,3 +7,6 @@
 /pkg/
 /spec/reports/
 /tmp/
+/lib/kodipity.sublime*
+/lib/.DS_Store
+*.gem

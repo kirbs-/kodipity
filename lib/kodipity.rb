@@ -2,8 +2,6 @@
 require 'httparty'
 require 'kodipity/models'
 require 'uri'
-require 'sinatra'
-require 'alexa_rubykit'
 
 module Kodipity
 
@@ -15,6 +13,7 @@ module Kodipity
 	@player_active = '{"jsonrpc": "2.0", "id": 1, "method": "Player.GetProperties", "params": {"properties": ["speed"], "playerid": 1}}'
 	@channels = '{"jsonrpc": "2.0", "id": 1, "method": "PVR.GetChannelGroups", "params": {"channeltype" : "tv"}}}'
 	@recordings = '{"jsonrpc": "2.0", "id": 1, "method": "PVR.GetRecordings"}}'
+	@player_pause = '{"jsonrpc": "2.0", "method": "Player.PlayPause", "params": { "playerid": 1 }, "id": 1}'
 
 	def self.movies
 		movies = {}
@@ -41,6 +40,7 @@ module Kodipity
 	def self.recordings(metadata = true)
 		recordings = []
 		HTTParty.post(@url, headers: @headers, body: @recordings)['result']['recordings'].each do |recording|
+			# puts recording.to_s
 			recordings << Kodipity::PVRRecording.new(recording['recordingid'], metadata)
 		end
 		recordings
@@ -70,6 +70,10 @@ module Kodipity
 		HTTParty.post(@url, headers: @headers, body: '{"jsonrpc": "2.0", "method": "Player.Open", "params": { "item": {"recordingid": "pvr://recordings/active///The%20Goldbergs%20The%20Greatest%20Musical%20Ever%20Written,%20TV%20(7.1%20WJLADT),%2020161201_010000.pvr"} }, id": 1}')
 	end
 
+	def self.pause
+		HTTParty.post(@url, headers: @headers, body: @player_pause)
+	end
+
 	def self.play_next_recording(tv_show)
 		recs = Kodipity.recordings.select{ |rec| rec.title.include? tv_show }
 		recs.sort_by!{ |rec| rec.start_time}
@@ -88,35 +92,6 @@ module Kodipity
 		recs[0]
 	end
 
+	
 
-end
-
-before do 
-	content_type('application/json')
-end
-
-
-post '/' do
-	request_json = JSON.parse(request.body.read.to_s)
-	response = AlexaRubykit::Response.new
-
-	case request_json['request']['type']
-	when 'LaunchRequest'
-		response.add_speech "House ready"
-	when 'IntentRequest'
-		case request_json['request']['intent']['name']
-		when 'GetFireplaceTemp'
-			reading = HTTParty.get('http://house.local/sensors/6/current_readings.json')[11]['value'].round(-1)
-			response.add_speech "#{reading} degrees"
-		when 'PlayShow'
-			tv_show = request_json['request']['intent']['slots']['showname']['value']
-			episode = Kodipity.play_next_recording tv_show
-			# episode.play
-			episode_name = episode.file.scan(/\/\/\/(...*), TV/)[0][0]
-			response.add_speech "Starting #{episode_name}"
-		end
-	else
-		response.add_speech "Good bye"
-	end
-	response.build_response(false)
 end
