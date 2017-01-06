@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Chris Kirby"]
   spec.email         = ["kirbycm@gmail.com"]
 
-  spec.summary       = %q{XBMC wrapper in Ruby}
+  spec.summary       = %q{Kodi JSON RPC wrapper in Ruby}
   spec.description   = %q{Kodi JSON RPC bindings written in Ruby.}
   spec.homepage      = "https://github.com/kirbs-/kodipity"
   spec.license       = "MIT"
