@@ -48,7 +48,7 @@ module Kodipity
 			channel_groups.each do |id|
 				channel_group = {jsonrpc: '2.0', id: 1, method: 'PVR.GetChannels', params: {channelgroupid: id}, playerid: 1}
 				HTTParty.post(@url, headers: @headers, body: channel_group.to_json)['result']['channels'].each do |channel|
-					media[:channels][channel['label']] = channel['channelid']
+					media[:channels][channel['label']] = Kodipity::Channel.new(channel['label'], channel['channelid'])
 				end
 			end
 			media[:channels]
@@ -107,6 +107,12 @@ module Kodipity
 
 			# recs[0].play
 			recs[0]
+		end
+
+		def play_channel(channel_name)
+			channels.each do |channel, channel_obj|
+				return channel_obj if channel.start_with? channel_name
+			end
 		end
 
 		

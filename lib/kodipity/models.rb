@@ -12,7 +12,7 @@ module Kodipity
 		def initialize(recording_id, fetch_data = false)
 			@title = title
 			@id = recording_id
-			@lot = plot
+			@plot = plot
 			@json = {jsonrpc: '2.0', id: 1, method: 'PVR.GetRecordingDetails', params: { properties: ['title','plot','plotoutline','file', 'channel','runtime', 'genre', 'playcount','starttime'] } }
 			@url = 'http://rpi-osmc.lan/jsonrpc'
 			# @url = 'http://127.0.0.1:8080/jsonrpc'
@@ -47,6 +47,15 @@ module Kodipity
 		def initialize(name, channel_id)
 			@name = name
 			@channel_id = channel_id
+			@url = 'http://rpi-osmc.lan/jsonrpc'
+			@headers = {"Content-Type" => 'application/json'}
+			@json = {jsonrpc: '2.0', id: 1, method: 'PVR.GetRecordingDetails', params: { properties: ['title','plot','plotoutline','file', 'channel','runtime', 'genre', 'playcount','starttime'] } }
+		end
+
+		def play
+			@json[:method] = 'Player.Open'
+			@json[:params] = { item: { channelid: @channel_id } }
+			HTTParty.post @url, headers: @headers, body: @json.to_json
 		end
 	end
 
