@@ -39,6 +39,10 @@ module Kodipity
 			@json[:params] = {item: {recordingid: @id}}
 			HTTParty.post(@url, headers: @headers, body: @json.to_json)
 		end
+
+		def name
+			@file.scan(/\/\/\/(...*), TV/)[0][0]
+		end
 	end
 
 	class Channel
